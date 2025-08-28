@@ -1,32 +1,31 @@
 <?php
 include 'auth.php';
-
-class Profile {
-    public $username;
-    public $isAdmin = false;
-
-    function __construct($u, $isAdmin = false) {
-        $this->username = $u;
-        $this->isAdmin = $isAdmin;
-    }
-
-    function __toString() {
-        return "User: {$this->username}, Role: " . ($this->isAdmin ? "Admin" : "User");
-    }
-}
+include '_header.php';
 
 if ($_POST) {
-    $u = $_POST['username'];
-    $p = $_POST['password'];
+    $u = $_POST['username'] ?? '';
+    $p = $_POST['password'] ?? '';
 
-    $sql = "SELECT * FROM users WHERE username='$u' AND password='$p'";
-    $res = $GLOBALS['PDO']->query($sql);
-    if ($row = $res->fetch()) {
+    // gunakan prepared statement untuk cegah SQLi
+    $stmt = $GLOBALS['PDO']->prepare("SELECT * FROM users WHERE username=? AND password=?");
+    $stmt->execute([$u, $p]);
+    $row = $stmt->fetch();
+
+    if ($row) {
         $_SESSION['user'] = $row['username'];
         $_SESSION['role'] = $row['role'];
 
-        $pObj = new Profile($row['username'], $row['role'] === 'admin');
-        setcookie('profile', serialize($pObj));
+        // jangan serialisasi object ke cookie
+        // cukup simpan JSON aman
+        $profileData = [
+            "username" => $row['username'],
+            "role" => $row['role']
+        ];
+        setcookie('profile', json_encode($profileData), [
+            'httponly' => true,
+            'secure' => true,
+            'samesite' => 'Strict'
+        ]);
 
         header("Location: dashboard.php");
         exit;
@@ -35,12 +34,13 @@ if ($_POST) {
     }
 }
 ?>
-<?php include '_header.php'; ?>
+
 <h2>Login</h2>
-<?php if (!empty($error)) echo "<p style='color:red'>$error</p>"; ?>
+<?php if (!empty($error)) echo "<p style='color:red'>" . htmlspecialchars($error) . "</p>"; ?>
 <form method="post">
   <label>Username <input name="username"></label>
   <label>Password <input type="password" name="password"></label>
   <button type="submit">Login</button>
 </form>
+
 <?php include '_footer.php'; ?>
