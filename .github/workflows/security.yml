@@ -1,4 +1,4 @@
-name: "CodeQL Security Scan"
+name: "Security Scans"
 
 on:
   push:
@@ -6,11 +6,11 @@ on:
   pull_request:
     branches: [ "main" ]
   schedule:
-    - cron: '0 12 * * 1'  # jalan tiap Senin
+    - cron: '0 12 * * 1'
 
 jobs:
-  analyze:
-    name: Analyze Code
+  codeql:
+    name: CodeQL Analysis
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'php' ]  # SCXLab pakai PHP
+        language: [ 'javascript', 'python', 'cpp', 'java', 'csharp', 'go', 'ruby' ] 
 
     steps:
     - name: Checkout repository
@@ -36,3 +36,17 @@ jobs:
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
+
+  semgrep:
+    name: Semgrep Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/php
+            p/security-audit
